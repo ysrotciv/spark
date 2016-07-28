@@ -19,7 +19,7 @@ package org.apache.spark.ml.regression
 
 import org.apache.hadoop.fs.Path
 
-import org.apache.spark.annotation.{Experimental, Since}
+import org.apache.spark.annotation.Since
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.{Estimator, Model}
 import org.apache.spark.ml.linalg.{Vector, Vectors, VectorUDT}
@@ -120,7 +120,6 @@ private[regression] trait IsotonicRegressionBase extends Params with HasFeatures
 }
 
 /**
- * :: Experimental ::
  * Isotonic regression.
  *
  * Currently implemented using parallelized pool adjacent violators algorithm.
@@ -129,7 +128,6 @@ private[regression] trait IsotonicRegressionBase extends Params with HasFeatures
  * Uses [[org.apache.spark.mllib.regression.IsotonicRegression]].
  */
 @Since("1.5.0")
-@Experimental
 class IsotonicRegression @Since("1.5.0") (@Since("1.5.0") override val uid: String)
   extends Estimator[IsotonicRegressionModel]
   with IsotonicRegressionBase with DefaultParamsWritable {
@@ -192,7 +190,6 @@ object IsotonicRegression extends DefaultParamsReadable[IsotonicRegression] {
 }
 
 /**
- * :: Experimental ::
  * Model fitted by IsotonicRegression.
  * Predicts using a piecewise linear function.
  *
@@ -202,7 +199,6 @@ object IsotonicRegression extends DefaultParamsReadable[IsotonicRegression] {
  *                 model trained by [[org.apache.spark.mllib.regression.IsotonicRegression]].
  */
 @Since("1.5.0")
-@Experimental
 class IsotonicRegressionModel private[ml] (
     override val uid: String,
     private val oldModel: MLlibIsotonicRegressionModel)
@@ -221,14 +217,14 @@ class IsotonicRegressionModel private[ml] (
   def setFeatureIndex(value: Int): this.type = set(featureIndex, value)
 
   /** Boundaries in increasing order for which predictions are known. */
-  @Since("1.5.0")
+  @Since("2.0.0")
   def boundaries: Vector = Vectors.dense(oldModel.boundaries)
 
   /**
    * Predictions associated with the boundaries at the same index, monotone because of isotonic
    * regression.
    */
-  @Since("1.5.0")
+  @Since("2.0.0")
   def predictions: Vector = Vectors.dense(oldModel.predictions)
 
   @Since("1.5.0")

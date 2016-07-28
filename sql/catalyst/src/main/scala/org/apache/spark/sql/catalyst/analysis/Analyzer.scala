@@ -1787,7 +1787,8 @@ class Analyzer(
         s @ WindowSpecDefinition(_, o, UnspecifiedFrame))
           if wf.frame != UnspecifiedFrame =>
           WindowExpression(wf, s.copy(frameSpecification = wf.frame))
-        case we @ WindowExpression(e, s @ WindowSpecDefinition(_, o, UnspecifiedFrame)) =>
+        case we @ WindowExpression(e, s @ WindowSpecDefinition(_, o, UnspecifiedFrame))
+          if e.resolved =>
           val frame = SpecifiedWindowFrame.defaultWindowFrame(o.nonEmpty, acceptWindowFrame = true)
           we.copy(windowSpec = s.copy(frameSpecification = frame))
       }
@@ -1836,13 +1837,25 @@ class Analyzer(
   }
 
   private def commonNaturalJoinProcessing(
-     left: LogicalPlan,
-     right: LogicalPlan,
-     joinType: JoinType,
-     joinNames: Seq[String],
-     condition: Option[Expression]) = {
-    val leftKeys = joinNames.map(keyName => left.output.find(_.name == keyName).get)
-    val rightKeys = joinNames.map(keyName => right.output.find(_.name == keyName).get)
+      left: LogicalPlan,
+      right: LogicalPlan,
+      joinType: JoinType,
+      joinNames: Seq[String],
+      condition: Option[Expression]) = {
+    val leftKeys = joinNames.map { keyName =>
+      val joinColumn = left.output.find(attr => resolver(attr.name, keyName))
+      assert(
+        joinColumn.isDefined,
+        s"$keyName should exist in ${left.output.map(_.name).mkString(",")}")
+      joinColumn.get
+    }
+    val rightKeys = joinNames.map { keyName =>
+      val joinColumn = right.output.find(attr => resolver(attr.name, keyName))
+      assert(
+        joinColumn.isDefined,
+        s"$keyName should exist in ${right.output.map(_.name).mkString(",")}")
+      joinColumn.get
+    }
     val joinPairs = leftKeys.zip(rightKeys)
 
     val newCondition = (condition ++ joinPairs.map(EqualTo.tupled)).reduceOption(And)

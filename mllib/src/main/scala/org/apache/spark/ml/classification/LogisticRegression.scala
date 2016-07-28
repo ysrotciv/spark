@@ -72,10 +72,9 @@ private[classification] trait LogisticRegressionParams extends ProbabilisticClas
   /**
    * Get threshold for binary classification.
    *
-   * If [[threshold]] is set, returns that value.
-   * Otherwise, if [[thresholds]] is set with length 2 (i.e., binary classification),
+   * If [[thresholds]] is set with length 2 (i.e., binary classification),
    * this returns the equivalent threshold: {{{1 / (1 + thresholds(0) / thresholds(1))}}}.
-   * Otherwise, returns [[threshold]] default value.
+   * Otherwise, returns [[threshold]] if set, or its default value if unset.
    *
    * @group getParam
    * @throws IllegalArgumentException if [[thresholds]] is set to an array of length other than 2.
@@ -152,13 +151,11 @@ private[classification] trait LogisticRegressionParams extends ProbabilisticClas
 }
 
 /**
- * :: Experimental ::
  * Logistic regression.
  * Currently, this class only supports binary classification.  It will support multiclass
  * in the future.
  */
 @Since("1.2.0")
-@Experimental
 class LogisticRegression @Since("1.2.0") (
     @Since("1.4.0") override val uid: String)
   extends ProbabilisticClassifier[Vector, LogisticRegression, LogisticRegressionModel]
@@ -476,14 +473,12 @@ object LogisticRegression extends DefaultParamsReadable[LogisticRegression] {
 }
 
 /**
- * :: Experimental ::
  * Model produced by [[LogisticRegression]].
  */
 @Since("1.4.0")
-@Experimental
 class LogisticRegressionModel private[spark] (
     @Since("1.4.0") override val uid: String,
-    @Since("1.6.0") val coefficients: Vector,
+    @Since("2.0.0") val coefficients: Vector,
     @Since("1.3.0") val intercept: Double)
   extends ProbabilisticClassificationModel[Vector, LogisticRegressionModel]
   with LogisticRegressionParams with MLWritable {
@@ -675,12 +670,12 @@ object LogisticRegressionModel extends MLReadable[LogisticRegressionModel] {
 
       val dataPath = new Path(path, "data").toString
       val data = sparkSession.read.format("parquet").load(dataPath)
-        .select("numClasses", "numFeatures", "intercept", "coefficients").head()
+
       // We will need numClasses, numFeatures in the future for multinomial logreg support.
-      // val numClasses = data.getInt(0)
-      // val numFeatures = data.getInt(1)
-      val intercept = data.getDouble(2)
-      val coefficients = data.getAs[Vector](3)
+      val Row(numClasses: Int, numFeatures: Int, intercept: Double, coefficients: Vector) =
+        MLUtils.convertVectorColumnsToML(data, "coefficients")
+          .select("numClasses", "numFeatures", "intercept", "coefficients")
+          .head()
       val model = new LogisticRegressionModel(metadata.uid, coefficients, intercept)
 
       DefaultParamsReader.getAndSetParams(model, metadata)
@@ -863,10 +858,10 @@ class BinaryLogisticRegressionSummary private[classification] (
    * Returns the receiver operating characteristic (ROC) curve,
    * which is a Dataframe having two fields (FPR, TPR)
    * with (0.0, 0.0) prepended and (1.0, 1.0) appended to it.
+   * See http://en.wikipedia.org/wiki/Receiver_operating_characteristic
    *
-   * Note: This ignores instance weights (setting all to 1.0) from [[LogisticRegression.weightCol]].
+   * Note: This ignores instance weights (setting all to 1.0) from `LogisticRegression.weightCol`.
    *       This will change in later Spark versions.
-   * @see http://en.wikipedia.org/wiki/Receiver_operating_characteristic
    */
   @Since("1.5.0")
   @transient lazy val roc: DataFrame = binaryMetrics.roc().toDF("FPR", "TPR")
@@ -874,7 +869,7 @@ class BinaryLogisticRegressionSummary private[classification] (
   /**
    * Computes the area under the receiver operating characteristic (ROC) curve.
    *
-   * Note: This ignores instance weights (setting all to 1.0) from [[LogisticRegression.weightCol]].
+   * Note: This ignores instance weights (setting all to 1.0) from `LogisticRegression.weightCol`.
    *       This will change in later Spark versions.
    */
   @Since("1.5.0")
@@ -884,7 +879,7 @@ class BinaryLogisticRegressionSummary private[classification] (
    * Returns the precision-recall curve, which is a Dataframe containing
    * two fields recall, precision with (0.0, 1.0) prepended to it.
    *
-   * Note: This ignores instance weights (setting all to 1.0) from [[LogisticRegression.weightCol]].
+   * Note: This ignores instance weights (setting all to 1.0) from `LogisticRegression.weightCol`.
    *       This will change in later Spark versions.
    */
   @Since("1.5.0")
@@ -893,7 +888,7 @@ class BinaryLogisticRegressionSummary private[classification] (
   /**
    * Returns a dataframe with two fields (threshold, F-Measure) curve with beta = 1.0.
    *
-   * Note: This ignores instance weights (setting all to 1.0) from [[LogisticRegression.weightCol]].
+   * Note: This ignores instance weights (setting all to 1.0) from `LogisticRegression.weightCol`.
    *       This will change in later Spark versions.
    */
   @Since("1.5.0")
@@ -906,7 +901,7 @@ class BinaryLogisticRegressionSummary private[classification] (
    * Every possible probability obtained in transforming the dataset are used
    * as thresholds used in calculating the precision.
    *
-   * Note: This ignores instance weights (setting all to 1.0) from [[LogisticRegression.weightCol]].
+   * Note: This ignores instance weights (setting all to 1.0) from `LogisticRegression.weightCol`.
    *       This will change in later Spark versions.
    */
   @Since("1.5.0")
@@ -919,7 +914,7 @@ class BinaryLogisticRegressionSummary private[classification] (
    * Every possible probability obtained in transforming the dataset are used
    * as thresholds used in calculating the recall.
    *
-   * Note: This ignores instance weights (setting all to 1.0) from [[LogisticRegression.weightCol]].
+   * Note: This ignores instance weights (setting all to 1.0) from `LogisticRegression.weightCol`.
    *       This will change in later Spark versions.
    */
   @Since("1.5.0")

@@ -63,18 +63,14 @@ test_that("repeatedly starting and stopping SparkR", {
   }
 })
 
-# Does not work consistently even with Hive off
-# nolint start
-# test_that("repeatedly starting and stopping SparkR", {
-#   for (i in 1:4) {
-#     sparkR.session(enableHiveSupport = FALSE)
-#     df <- createDataFrame(data.frame(dummy=1:i))
-#     expect_equal(count(df), i)
-#     sparkR.session.stop()
-#     Sys.sleep(5) # Need more time to shutdown Hive metastore
-#   }
-# })
-# nolint end
+test_that("repeatedly starting and stopping SparkSession", {
+  for (i in 1:4) {
+    sparkR.session(enableHiveSupport = FALSE)
+    df <- createDataFrame(data.frame(dummy = 1:i))
+    expect_equal(count(df), i)
+    sparkR.session.stop()
+  }
+})
 
 test_that("rdd GC across sparkR.stop", {
   sc <- sparkR.sparkContext() # sc should get id 0
@@ -96,13 +92,18 @@ test_that("rdd GC across sparkR.stop", {
 
   count(rdd3)
   count(rdd4)
+  sparkR.session.stop()
 })
 
 test_that("job group functions can be called", {
   sc <- sparkR.sparkContext()
-  setJobGroup(sc, "groupId", "job description", TRUE)
-  cancelJobGroup(sc, "groupId")
-  clearJobGroup(sc)
+  setJobGroup("groupId", "job description", TRUE)
+  cancelJobGroup("groupId")
+  clearJobGroup()
+
+  suppressWarnings(setJobGroup(sc, "groupId", "job description", TRUE))
+  suppressWarnings(cancelJobGroup(sc, "groupId"))
+  suppressWarnings(clearJobGroup(sc))
   sparkR.session.stop()
 })
 
@@ -160,7 +161,7 @@ test_that("sparkJars sparkPackages as comma-separated strings", {
 })
 
 test_that("spark.lapply should perform simple transforms", {
-  sc <- sparkR.sparkContext()
+  sparkR.sparkContext()
   doubled <- spark.lapply(1:10, function(x) { 2 * x })
   expect_equal(doubled, as.list(2 * 1:10))
   sparkR.session.stop()
